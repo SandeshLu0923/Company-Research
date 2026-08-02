@@ -135,18 +135,6 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-st.markdown(
-    """
-    <div style="display:flex; justify-content:center; gap:0.6rem; flex-wrap:wrap; margin-bottom:1rem;">
-        <span class="hero-chip">notion.so</span>
-        <span class="hero-chip">Figma</span>
-        <span class="hero-chip">Linear</span>
-        <span class="hero-chip">Vercel</span>
-    </div>
-    """,
-    unsafe_allow_html=True,
-)
-
 with st.form("research_form", clear_on_submit=False):
     c1, c2 = st.columns([6, 1])
     with c1:

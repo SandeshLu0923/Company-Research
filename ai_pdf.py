@@ -105,8 +105,17 @@ def build_pdf_binary(report: dict) -> bytes:
     pdf.ln(4)
     pdf.set_font("Helvetica", "", 10)
     pdf.set_text_color(50, 50, 50)
-    pdf.multi_cell(safe_width, 6, safe_text(report.get("products_services", "N/A")))
-    pdf.ln(6)
+    
+    products_text = safe_text(report.get("products_services", "N/A"))
+    # Split by common delimiters and format as list
+    if isinstance(products_text, str):
+        items = [item.strip() for item in products_text.replace('\n', ',').split(',') if item.strip()]
+        for item in items:
+            pdf.multi_cell(safe_width, 6, f"• {item}")
+            pdf.ln(1)
+    else:
+        pdf.multi_cell(safe_width, 6, products_text)
+    pdf.ln(4)
 
     # AI-Generated Pain Points section
     pdf.set_font("Helvetica", "B", 12)
@@ -118,8 +127,17 @@ def build_pdf_binary(report: dict) -> bytes:
     pdf.ln(4)
     pdf.set_font("Helvetica", "", 10)
     pdf.set_text_color(50, 50, 50)
-    pdf.multi_cell(safe_width, 6, safe_text(report.get("pain_points", "N/A")))
-    pdf.ln(6)
+    
+    pain_points_text = safe_text(report.get("pain_points", "N/A"))
+    # Split by common delimiters and format as list
+    if isinstance(pain_points_text, str):
+        items = [item.strip() for item in pain_points_text.replace('\n', ',').split('.') if item.strip()]
+        for item in items:
+            pdf.multi_cell(safe_width, 6, f"• {item}")
+            pdf.ln(1)
+    else:
+        pdf.multi_cell(safe_width, 6, pain_points_text)
+    pdf.ln(4)
 
     # Competitors section
     competitors = report.get("competitors", [])
