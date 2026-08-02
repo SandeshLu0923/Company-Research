@@ -34,8 +34,7 @@ def execute_openrouter_call(prompt: str, api_key: str, model: str) -> str:
     if not api_key:
         return "Error: Missing AI validation token."
     
-    # 🎯 TARGET PLURAL NATIVE COMPLETIONS ENDPOINT
-    url = "https://openrouter.ai"
+    url = "https://openrouter.ai/api/v1/chat/completions"
     
     headers = {
         "Authorization": f"Bearer {api_key.strip()}", 
@@ -62,17 +61,24 @@ def execute_openrouter_call(prompt: str, api_key: str, model: str) -> str:
     try:
         response = httpx.post(url, headers=headers, json=payload, timeout=45)
         
-        # Capture raw validation error logs if returned by upstream servers
+        # 🎯 GUARDRAIL 1: Catch real HTTP errors before attempting JSON data extraction
         if response.status_code != 200:
-            return f"AI Error: Remote server returned status code {response.status_code} - {response.text}"
+            return f"API Connection Error: Server returned code {response.status_code}. Details: {response.text}"
             
-        choices = response.json().get("choices", [])
+        response_json = response.json()
+        choices = response_json.get("choices", [])
+        
+        # 🎯 GUARDRAIL 2: Safely parse message list elements without risking list index crashes
         if choices and len(choices) > 0:
-            # 🎯 EXTRACT RAW TEXT MATRIX FROM THE OPENROUTER DICTIONARY PACKAGES CLEANLY
-            return choices[0].get("message", {}).get("content", "")
-        return "AI Error: Received empty response layout from OpenRouter."
+            message_obj = choices[0].get("message", {})
+            return message_obj.get("content", "")
+            
+        return f"AI Structure Error: Received valid code, but choices block was empty. Raw JSON: {response.text}"
+        
     except Exception as exc:
-        return f"AI Error: {str(exc)}"
+        # Returns the actual Python exception text so you see the true error cause
+        return f"Network Error: {str(exc)}"
+
 
 def build_pdf_binary(report: dict) -> bytes:
     """Compiles unified research profiles cleanly into a standardized corporate PDF."""

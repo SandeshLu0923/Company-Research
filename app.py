@@ -109,7 +109,18 @@ with st.sidebar:
     with tab_a:
         st.text_input("OpenRouter API Key", type="password", key="openrouter_api_key")
         st.text_input("Serper.dev API Key", type="password", key="serper_api_key")
-        st.selectbox("AI Model", ["openai/gpt-4o-mini", "google/gemini-1.5-pro", "anthropic/claude-3.5-sonnet"], key="selected_model")
+        # Replace your old selectbox array code with this exact live free-tier mapping:
+        model = st.selectbox(
+            "AI Model", 
+            [
+                "openai/gpt-4o-mini", 
+                "openrouter/free",
+                "anthropic/claude-sonnet-5",
+                "google/gemini-2.5-flash"
+            ], 
+            key="selected_model"
+        )
+
         
     with tab_b:
         st.info("Discord bot integration is enabled once both fields are configured.")
@@ -195,13 +206,23 @@ if submitted and user_input:
 
         with st.status("🧠 Generating the AI-powered research summary...", expanded=False):
             prompt = (
-                "You are a company intelligence agent. Return strict JSON only. "
-                "Do not include markdown fences. The schema must include fields: company_name, website, phone_number, address, "
-                "products_services, summary, pain_points, competitors. Use the sources to create a concise but useful brief. "
-                f"\nCompany Input: {company_name}\nWebsite: {url}\nScraped Content:\n{web_text}\nSearch Context:\n{search_blob}\n"
-                "Return valid JSON with competitor objects shaped as [{\"name\": ..., \"website\": ...}]"
+                "Provide a brief corporate profile matching this text schema template exactly. "
+                "Do not include any conversational introduction, summary remarks, or code blocks.\n\n"
+                "TEMPLATE TO FILL OUT:\n"
+                "{\n"
+                '  "company_name": "Name of the target entity",\n'
+                '  "website": "Core URL path link",\n'
+                '  "phone_number": "Phone number string or Not Listed",\n'
+                '  "address": "Headquarters address or Not Listed",\n'
+                '  "products_services": "Primary corporate products lines",\n'
+                '  "summary": "A clear operational corporate summary outline",\n'
+                '  "pain_points": "Three distinct enterprise market pain points",\n'
+                '  "competitors": [{"name": "Competitor 1 Name", "website": "Competitor 1 URL"}]\n'
+                "}\n\n"
+                f"SOURCE MATERIAL DETAILS:\nCompany: {company_name}\nWebsite: {url}\nScraped Data:\n{web_text}\nContext:\n{search_blob}"
             )
             ai_response = ai_pdf.execute_openrouter_call(prompt, OR_KEY, ACTIVE_MODEL)
+
             
             try:
                 # 🎯 BULLETPROOF CLEANING: Extract only the valid JSON payload using Regex
