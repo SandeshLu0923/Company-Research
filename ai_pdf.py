@@ -4,27 +4,38 @@ from fpdf import FPDF
 import streamlit as st
 
 def verify_serper_authentication(api_key: str) -> bool:
-    """Executes a minimalist ping test to confirm the Serper key is active."""
+    """Executes a real Serper search request to confirm the key is active."""
     if not api_key:
         return False
     try:
         response = httpx.post(
-            "https://serper.dev",
-            headers={"X-API-KEY": api_key, "Content-Type": "application/json"},
+            "https://google.serper.dev/search",
+            headers={"X-API-KEY": api_key.strip(), "Content-Type": "application/json"},
             json={"q": "ping", "num": 1},
-            timeout=8,
+            timeout=12,
         )
         return response.status_code == 200
     except Exception:
         return False
 
 def verify_openrouter_authentication(api_key: str) -> bool:
-    """Queries the OpenRouter auth endpoint to verify token legitimacy."""
+    """Performs a tiny authenticated OpenRouter chat completion call to verify the token."""
     if not api_key:
         return False
-    headers = {"Authorization": f"Bearer {api_key}"}
     try:
-        response = httpx.get("https://openrouter.ai", headers=headers, timeout=8)
+        response = httpx.post(
+            "https://openrouter.ai/api/v1/chat/completions",
+            headers={
+                "Authorization": f"Bearer {api_key.strip()}",
+                "Content-Type": "application/json",
+            },
+            json={
+                "model": "openrouter/free",
+                "messages": [{"role": "user", "content": "ping"}],
+                "max_tokens": 1,
+            },
+            timeout=20,
+        )
         return response.status_code == 200
     except Exception:
         return False
