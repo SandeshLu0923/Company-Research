@@ -26,7 +26,6 @@ st.markdown(
         .stAlert { border-radius: 16px; border: none; }
         .stTabs [data-baseweb="tab-list"] { gap: 10px; }
         .stTabs [data-baseweb="tab"] { background: #1a1f35; border-radius: 12px; color: #9ca3af; font-weight: 500; }
-        .stTabs [aria-selected="true"] { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
         [data-testid="stSidebar"] { background: linear-gradient(180deg, #0f1220 0%, #0a0c12 100%); border-right: 1px solid #3b4261; }
         [data-testid="stSidebar"] > div { padding-top: 0rem; }
         [data-testid="stSidebarContent"] { position: relative; overflow-y: auto; }
@@ -54,7 +53,7 @@ st.markdown(
         }
         .stTextInput > div > div > input:focus {
             border-color: #667eea;
-            box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2);
+            box-shadow: 0 0 0 2px rgba(11, 14, 21, 1.0);
         }
         .stStatus { border-radius: 16px; background: #1a1f35; border: 1px solid #3b4261; }
         .stStatus > div { padding: 1rem; }
@@ -64,6 +63,7 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
+# 1. Core State Init Bounds
 if "openrouter_api_key" not in st.session_state:
     st.session_state.openrouter_api_key = os.getenv("OPENROUTER_API_KEY", "")
 if "serper_api_key" not in st.session_state:
@@ -78,6 +78,13 @@ if "applicant_name" not in st.session_state:
     st.session_state.applicant_name = ""
 if "applicant_email" not in st.session_state:
     st.session_state.applicant_email = ""
+if "history" not in st.session_state:
+    st.session_state.history = [{"role": "assistant", "content": "Welcome candidate. Submit a company name or website URL below to construct active intelligence."}]
+if "last_report" not in st.session_state:
+    st.session_state.last_report = None
+
+
+# SIDEBAR RE-ENGINEERING (Forms Removed to Permit Instant State Sync)
 
 with st.sidebar:
     st.markdown(
@@ -93,41 +100,31 @@ with st.sidebar:
         unsafe_allow_html=True,
     )
 
-    st.markdown('<div>', unsafe_allow_html=True)
     if st.button("+ New Research", use_container_width=True):
         st.session_state.history = [{"role": "assistant", "content": "Welcome candidate. Submit a company name or website URL below to construct active intelligence."}]
         st.session_state.last_report = None
         st.session_state.research_input = ""
-        st.session_state.submitted = False
-    st.markdown('</div>', unsafe_allow_html=True)
 
     tab_a, tab_b = st.tabs(["API", "DISCORD"])
     with tab_a:
-        with st.form("api_config_form", clear_on_submit=False):
-            or_key = st.text_input("OpenRouter API Key", type="password", key="openrouter_api_key")
-            sp_key = st.text_input("Serper.dev API Key", type="password", key="serper_api_key")
-            model = st.selectbox("AI Model", ["openai/gpt-4o-mini", "google/gemini-1.5-pro", "anthropic/claude-3.5-sonnet"], key="selected_model")
-            st.form_submit_button("Save Configuration", use_container_width=True)
+        st.text_input("OpenRouter API Key", type="password", key="openrouter_api_key")
+        st.text_input("Serper.dev API Key", type="password", key="serper_api_key")
+        st.selectbox("AI Model", ["openai/gpt-4o-mini", "google/gemini-1.5-pro", "anthropic/claude-3.5-sonnet"], key="selected_model")
+        
     with tab_b:
-        with st.form("discord_config_form", clear_on_submit=False):
-            st.info("Discord bot integration is enabled once both fields are configured.")
-            d_token = st.text_input("Bot Token", type="password", key="discord_bot_token")
-            ch_id = st.text_input("Channel ID", key="discord_channel_id")
-            st.subheader("Applicant Details")
-            app_name = st.text_input("Full Name", key="applicant_name")
-            app_email = st.text_input("Email Address", key="applicant_email")
-            st.form_submit_button("Save Discord Config", use_container_width=True)
-    st.markdown('</div>', unsafe_allow_html=True)
+        st.info("Discord bot integration is enabled once both fields are configured.")
+        st.text_input("Bot Token", type="password", key="discord_bot_token")
+        st.text_input("Channel ID", key="discord_channel_id")
+        st.subheader("Applicant Details")
+        st.text_input("Full Name", key="applicant_name")
+        st.text_input("Email Address", key="applicant_email")
 
     st.markdown("---")
     st.caption("How it works")
     st.markdown("1. Enter a company name or website URL\n2. Resolve the official site using Serper\n3. Crawl the domain and enrich with live search context\n4. Generate a polished PDF report")
 
-if "history" not in st.session_state:
-    st.session_state.history = [{"role": "assistant", "content": "Welcome candidate. Submit a company name or website URL below to construct active intelligence."}]
 
-if "last_report" not in st.session_state:
-    st.session_state.last_report = None
+#MAIN PRESENTATION & PROCESSING PIPELINE HOOKS
 
 st.markdown('<div class="hero-title">Know any company<br/>in minutes.</div>', unsafe_allow_html=True)
 st.markdown(
@@ -135,7 +132,12 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# Example company chips
+# Clean Persistent Variable Mappings
+OR_KEY = st.session_state.openrouter_api_key.strip()
+SP_KEY = st.session_state.serper_api_key.strip()
+ACTIVE_MODEL = st.session_state.selected_model
+
+# Example quick chips
 example_companies = ["notion.so", "Figma", "Linear", "Vercel"]
 col1, col2, col3, col4 = st.columns(4)
 with col1:
@@ -172,14 +174,14 @@ if submitted and user_input:
     st.session_state.history.append({"role": "user", "content": user_input})
 
     with st.spinner("Validating API access..."):
-        is_sp_ok = ai_pdf.verify_serper_authentication(sp_key)
-        is_or_ok = ai_pdf.verify_openrouter_authentication(or_key)
+        is_sp_ok = ai_pdf.verify_serper_authentication(SP_KEY)
+        is_or_ok = ai_pdf.verify_openrouter_authentication(OR_KEY)
 
     if not is_sp_ok or not is_or_ok:
         st.error("Please provide valid Serper.dev and OpenRouter API keys in the sidebar before running the research workflow.")
     else:
         with st.status("🔍 Resolving official domain and search context...", expanded=True):
-            url, company_name = engine.extract_company_website(user_input, sp_key)
+            url, company_name = engine.extract_company_website(user_input, SP_KEY)
             if not url:
                 url = engine.ensure_http_url(user_input)
                 company_name = user_input
@@ -188,10 +190,10 @@ if submitted and user_input:
             web_text = asyncio.run(engine.execute_autonomous_crawler(url))
 
         with st.status("📊 Enriching the brief with public search context...", expanded=True):
-            search_context = engine.summarize_search_results(company_name, url, sp_key)
+            search_context = engine.summarize_search_results(company_name, url, SP_KEY)
             search_blob = json.dumps(search_context, ensure_ascii=False)
 
-        with st.status("🧠 Generating the AI-powered research summary...", expanded=True):
+        with st.status("🧠 Generating the AI-powered research summary...", expanded=False):
             prompt = (
                 "You are a company intelligence agent. Return strict JSON only. "
                 "Do not include markdown fences. The schema must include fields: company_name, website, phone_number, address, "
@@ -199,19 +201,23 @@ if submitted and user_input:
                 f"\nCompany Input: {company_name}\nWebsite: {url}\nScraped Content:\n{web_text}\nSearch Context:\n{search_blob}\n"
                 "Return valid JSON with competitor objects shaped as [{\"name\": ..., \"website\": ...}]"
             )
-            ai_response = ai_pdf.execute_openrouter_call(prompt, or_key, model)
+            ai_response = ai_pdf.execute_openrouter_call(prompt, OR_KEY, ACTIVE_MODEL)
+            
             try:
-                parsed = json.loads(ai_response.strip().lstrip("```json").rstrip("```").strip())
+                # 🎯 CLEAN CONVERSION: Safely strips trailing/leading markdown fences from any provider
+                clean_json_str = ai_response.strip()
+                if clean_json_str.startswith("```"):
+                    clean_json_str = clean_json_str.split("```")[1]
+                    if clean_json_str.startswith("json"):
+                        clean_json_str = clean_json_str[4:]
+                clean_json_str = clean_json_str.strip()
+                
+                parsed = json.loads(clean_json_str)
             except Exception:
                 parsed = {
-                    "company_name": company_name,
-                    "website": url,
-                    "phone_number": "Not Listed",
-                    "address": "Not Listed",
-                    "products_services": "Unable to extract from the model response.",
-                    "summary": ai_response,
-                    "pain_points": "Unable to extract from the model response.",
-                    "competitors": [],
+                    "company_name": company_name, "website": url, "phone_number": "Not Listed", "address": "Not Listed",
+                    "products_services": "Unable to extract from response.", "summary": ai_response,
+                    "pain_points": "Unable to extract from response.", "competitors": [],
                 }
 
         competitors = parsed.get("competitors", []) or []
@@ -228,10 +234,6 @@ if submitted and user_input:
         final_pkg["_pdf_data"] = ai_pdf.build_pdf_binary(final_pkg)
         st.session_state.last_report = final_pkg
         st.session_state.history.append({"role": "assistant", "content": f"Research completed for {company_name}. Download the PDF or share the result to Discord."})
-
-for chat in st.session_state.history:
-    with st.chat_message(chat["role"]):
-        st.write(chat["content"])
 
 if st.session_state.last_report:
     report_pkg = st.session_state.last_report
@@ -260,10 +262,18 @@ if st.session_state.last_report:
         col_dl, col_discord = st.columns([1, 1])
         with col_dl:
             st.download_button("📥 Download PDF Report", data=pdf_data, file_name=f"{report_pkg['name']}_report.pdf", mime="application/pdf")
-        if d_token and ch_id and app_name and app_email:
+        
+        # EXTRACT CLEAN ACTIVE VALUE FROM STATES TO BYPASS THE DELETED FORMS
+        D_TOKEN = st.session_state.discord_bot_token.strip()
+        CH_ID = st.session_state.discord_channel_id.strip()
+        APP_NAME = st.session_state.applicant_name.strip()
+        APP_EMAIL = st.session_state.applicant_email.strip()
+
+        if D_TOKEN and CH_ID and APP_NAME and APP_EMAIL:
             with col_discord:
                 if st.button("Send to Discord"):
-                    sent = ai_pdf.post_to_discord_channel(d_token, ch_id, app_name, app_email, report_pkg, pdf_data)
+                    # PASS COMPACT SECURE TOKENS DIRECTLY
+                    sent = ai_pdf.post_to_discord_channel(D_TOKEN, CH_ID, APP_NAME, APP_EMAIL, report_pkg, pdf_data)
                     if sent:
                         st.success("Discord report delivered successfully.")
                     else:

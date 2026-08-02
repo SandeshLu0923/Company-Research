@@ -191,13 +191,16 @@ def post_to_discord_channel(token: str, ch_id: str, app_name: str, app_email: st
     )
 
     try:
-        files = [("file", ("Intelligence_Report.pdf", pdf_bytes, "application/pdf"))]
-        data = {"payload_json": json.dumps({"content": message})}
+        # CONVERT BOTH TO AN EXPLICIT MULTIPART DATA BLOB DICTIONARY BLOCK
+        files = {
+            "payload_json": (None, json.dumps({"content": message}), "application/json"),
+            "file": ("Intelligence_Report.pdf", pdf_bytes, "application/pdf")
+        }
+        
         response = httpx.post(
             url,
-            headers={"Authorization": f"Bot {token}"},
-            data=data,
-            files=files,
+            headers={"Authorization": f"Bot {token.strip()}"},
+            files=files, # Pass everything seamlessly inside the multi-part file matrix
             timeout=20,
         )
         response.raise_for_status()
@@ -208,3 +211,4 @@ def post_to_discord_channel(token: str, ch_id: str, app_name: str, app_email: st
     except Exception as e:
         print(f"Discord Error: {str(e)}")
         return False
+
