@@ -123,22 +123,22 @@ st.markdown(
 )
 
 # Clean Persistent Variable Mappings
-OR_KEY = st.session_state.stored_openrouter_key
-SP_KEY = st.session_state.stored_serper_key
-ACTIVE_MODEL = st.session_state.selected_model
+OR_KEY = st.session_state.get("openrouter_api_key", "").strip()
+SP_KEY = st.session_state.get("serper_api_key", "").strip()
 
-D_TOKEN = st.session_state.discord_bot_token
-CH_ID = st.session_state.discord_channel_id
-APP_NAME = st.session_state.applicant_name
-APP_EMAIL = st.session_state.applicant_email
-
-# If the inputs are completely empty on the UI fields, fall back to check if they are defined inside Streamlit Advanced Secrets
+# Only if the user completely leaves the UI text boxes blank, we look at the server environment as a backup
 if not OR_KEY:
     OR_KEY = os.getenv("OPENROUTER_API_KEY", "").strip()
 if not SP_KEY:
     SP_KEY = os.getenv("SERPER_API_KEY", "").strip()
 
-ACTIVE_MODEL = st.session_state.get("selected_model", "openai/gpt-4o-mini")
+ACTIVE_MODEL = st.session_state.get("selected_model", "openrouter/free")
+
+D_TOKEN = st.session_state.get("discord_bot_token", "").strip()
+CH_ID = st.session_state.get("discord_channel_id", "").strip()
+APP_NAME = st.session_state.get("applicant_name", "").strip()
+APP_EMAIL = st.session_state.get("applicant_email", "").strip()
+
 
 # Example quick chips
 example_companies = ["notion.so", "Figma", "Linear", "Vercel"]
