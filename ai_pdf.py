@@ -223,7 +223,7 @@ def post_to_discord_channel(token: str, ch_id: str, app_name: str, app_email: st
     if not token or not ch_id:
         return False
 
-    url = f"https://discord.com{ch_id}/messages"
+    url = f"https://discord.com/api/v10/channels/{ch_id}/messages"
     message = (
         f"🧬 **Relu Hackathon Sync Complete**\n"
         f"👤 **Candidate:** {app_name} ({app_email})\n"
@@ -232,17 +232,13 @@ def post_to_discord_channel(token: str, ch_id: str, app_name: str, app_email: st
     )
 
     try:
-        files = {
-            "payload_json": (None, json.dumps({"content": message}), "application/json"),
-            "file": ("Intelligence_Report.pdf", pdf_bytes, "application/pdf")
-        }
-        
         response = httpx.post(
             url,
             headers={"Authorization": f"Bot {token.strip()}"},
-            files=files,
+            data={"content": message},
+            files={"file": ("Intelligence_Report.pdf", pdf_bytes, "application/pdf")},
             timeout=20,
         )
-        return response.status_code in [200, 201]
+        return response.status_code in [200, 201, 202]
     except Exception:
         return False
