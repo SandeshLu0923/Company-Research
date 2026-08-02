@@ -144,9 +144,16 @@ st.markdown(
 )
 
 # Clean Persistent Variable Mappings
-OR_KEY = st.session_state.openrouter_api_key.strip()
-SP_KEY = st.session_state.serper_api_key.strip()
-ACTIVE_MODEL = st.session_state.selected_model
+OR_KEY = st.session_state.get("openrouter_api_key", "").strip()
+SP_KEY = st.session_state.get("serper_api_key", "").strip()
+
+# If the inputs are completely empty on the UI fields, fall back to check if they are defined inside Streamlit Advanced Secrets
+if not OR_KEY:
+    OR_KEY = os.getenv("OPENROUTER_API_KEY", "").strip()
+if not SP_KEY:
+    SP_KEY = os.getenv("SERPER_API_KEY", "").strip()
+
+ACTIVE_MODEL = st.session_state.get("selected_model", "openai/gpt-4o-mini")
 
 # Example quick chips
 example_companies = ["notion.so", "Figma", "Linear", "Vercel"]
