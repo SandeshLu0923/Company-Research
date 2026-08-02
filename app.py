@@ -163,6 +163,7 @@ with st.form("research_form", clear_on_submit=False):
             placeholder="Enter a company name (e.g. Stripe) or website URL (e.g. https://stripe.com)...",
             label_visibility="collapsed",
             key="research_input",
+            value=st.session_state.get("research_input", "")
         )
     with c2:
         submitted = st.form_submit_button("Research →", use_container_width=True)
