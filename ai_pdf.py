@@ -113,11 +113,11 @@ def build_pdf_binary(report: dict) -> bytes:
         products_text = products_text.strip("[]").replace("'", "").replace('"', "")
         items = [item.strip() for item in products_text.split(',') if item.strip()]
         for item in items:
-            pdf.multi_cell(safe_width, 6, f"• {item}")
+            pdf.multi_cell(safe_width, 6, f"- {item}")
             pdf.ln(1)
     elif isinstance(products_text, list):
         for item in products_text:
-            pdf.multi_cell(safe_width, 6, f"• {safe_text(item)}")
+            pdf.multi_cell(safe_width, 6, f"- {safe_text(item)}")
             pdf.ln(1)
     else:
         pdf.multi_cell(safe_width, 6, products_text)
@@ -141,11 +141,11 @@ def build_pdf_binary(report: dict) -> bytes:
         pain_points_text = pain_points_text.strip("[]").replace("'", "").replace('"', "")
         items = [item.strip() for item in pain_points_text.split(',') if item.strip()]
         for item in items:
-            pdf.multi_cell(safe_width, 6, f"• {item}")
+            pdf.multi_cell(safe_width, 6, f"- {item}")
             pdf.ln(1)
     elif isinstance(pain_points_text, list):
         for item in pain_points_text:
-            pdf.multi_cell(safe_width, 6, f"• {safe_text(item)}")
+            pdf.multi_cell(safe_width, 6, f"- {safe_text(item)}")
             pdf.ln(1)
     else:
         pdf.multi_cell(safe_width, 6, pain_points_text)
@@ -170,7 +170,7 @@ def build_pdf_binary(report: dict) -> bytes:
             else:
                 name = safe_text(competitor)
                 website = "N/A"
-            pdf.multi_cell(safe_width, 6, f"• {name} - {website}")
+            pdf.multi_cell(safe_width, 6, f"- {name} - {website}")
             pdf.ln(2)
         pdf.ln(4)
 
