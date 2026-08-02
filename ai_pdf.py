@@ -81,14 +81,25 @@ def execute_openrouter_call(prompt: str, api_key: str, model: str) -> str:
 
 
 def build_pdf_binary(report: dict) -> bytes:
-    """Compiles unified research profiles cleanly into a standardized corporate PDF."""
+    """Compiles unified research profiles cleanly into a standardized corporate PDF with Unicode protection."""
     pdf = FPDF(format="A4")
     pdf.add_page()
     pdf.set_margins(15, 15, 15)
     pdf.set_auto_page_break(auto=True, margin=15)
 
     safe_width = 180
-    safe_text = lambda value: str(value or "N/A")
+
+    # 🎯 FIX LAYER: Cleans up text dynamically to completely prevent FPDFUnicodeEncodingExceptions
+    def safe_text(value) -> str:
+        if not value:
+            return "N/A"
+        # Convert value to string and replace common unreadable curly quotes/dashes
+        text_str = str(value)
+        text_str = text_str.replace("“", '"').replace("”", '"').replace("‘", "'").replace("’", "'")
+        text_str = text_str.replace("—", "-").replace("–", "-")
+        
+        # Strip out emojis and any non-ASCII characters that break Helvetica
+        return text_str.encode('ascii', 'ignore').decode('ascii')
 
     # Header section
     pdf.set_fill_color(15, 15, 20)
@@ -131,10 +142,10 @@ def build_pdf_binary(report: dict) -> bytes:
     
     products_text = report.get("products_services", "N/A")
     if isinstance(products_text, str):
-        products_text = products_text.strip("[]").replace("'", "").replace('"', "")
-        items = [item.strip() for item in products_text.split(',') if item.strip()]
+        cleaned_text = products_text.strip("[]").replace("'", "").replace('"', "")
+        items = [item.strip() for item in cleaned_text.split(',') if item.strip()]
         for item in items:
-            pdf.multi_cell(safe_width, 6, f"- {item}")
+            pdf.multi_cell(safe_width, 6, f"- {safe_text(item)}")
             pdf.ln(1)
     elif isinstance(products_text, list):
         for item in products_text:
@@ -157,10 +168,10 @@ def build_pdf_binary(report: dict) -> bytes:
     
     pain_points_text = report.get("pain_points", "N/A")
     if isinstance(pain_points_text, str):
-        pain_points_text = pain_points_text.strip("[]").replace("'", "").replace('"', "")
-        items = [item.strip() for item in pain_points_text.split(',') if item.strip()]
+        cleaned_pain = pain_points_text.strip("[]").replace("'", "").replace('"', "")
+        items = [item.strip() for item in cleaned_pain.split(',') if item.strip()]
         for item in items:
-            pdf.multi_cell(safe_width, 6, f"- {item}")
+            pdf.multi_cell(safe_width, 6, f"- {safe_text(item)}")
             pdf.ln(1)
     elif isinstance(pain_points_text, list):
         for item in pain_points_text:
@@ -189,11 +200,12 @@ def build_pdf_binary(report: dict) -> bytes:
             else:
                 name = safe_text(competitor)
                 website = "N/A"
-            pdf.multi_cell(safe_width, 6, f"- {name} - {website}")
+            pdf.multi_cell(safe_width, 6, f"- {safe_text(name)} - {safe_text(website)}")
             pdf.ln(2)
         pdf.ln(4)
 
     return bytes(pdf.output(dest="S"))
+
 
 def post_to_discord_channel(token: str, ch_id: str, app_name: str, app_email: str, r_data: dict, pdf_bytes: bytes) -> bool:
     """Dispatches report binaries and research data arrays straight to Discord via API."""
