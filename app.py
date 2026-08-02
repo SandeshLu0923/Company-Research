@@ -135,6 +135,26 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
+# Example company chips
+example_companies = ["notion.so", "Figma", "Linear", "Vercel"]
+col1, col2, col3, col4 = st.columns(4)
+with col1:
+    if st.button("notion.so", key="chip_notion", use_container_width=True):
+        st.session_state.research_input = "notion.so"
+        st.rerun()
+with col2:
+    if st.button("Figma", key="chip_figma", use_container_width=True):
+        st.session_state.research_input = "Figma"
+        st.rerun()
+with col3:
+    if st.button("Linear", key="chip_linear", use_container_width=True):
+        st.session_state.research_input = "Linear"
+        st.rerun()
+with col4:
+    if st.button("Vercel", key="chip_vercel", use_container_width=True):
+        st.session_state.research_input = "Vercel"
+        st.rerun()
+
 with st.form("research_form", clear_on_submit=False):
     c1, c2 = st.columns([6, 1])
     with c1:

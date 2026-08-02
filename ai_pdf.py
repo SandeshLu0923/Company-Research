@@ -107,11 +107,17 @@ def build_pdf_binary(report: dict) -> bytes:
     pdf.set_text_color(50, 50, 50)
     
     products_text = safe_text(report.get("products_services", "N/A"))
-    # Split by common delimiters and format as list
+    # Handle list format: ['item1', 'item2'] or comma-separated
     if isinstance(products_text, str):
-        items = [item.strip() for item in products_text.replace('\n', ',').split(',') if item.strip()]
+        # Remove brackets and quotes if present
+        products_text = products_text.strip("[]").replace("'", "").replace('"', "")
+        items = [item.strip() for item in products_text.split(',') if item.strip()]
         for item in items:
             pdf.multi_cell(safe_width, 6, f"• {item}")
+            pdf.ln(1)
+    elif isinstance(products_text, list):
+        for item in products_text:
+            pdf.multi_cell(safe_width, 6, f"• {safe_text(item)}")
             pdf.ln(1)
     else:
         pdf.multi_cell(safe_width, 6, products_text)
@@ -129,11 +135,17 @@ def build_pdf_binary(report: dict) -> bytes:
     pdf.set_text_color(50, 50, 50)
     
     pain_points_text = safe_text(report.get("pain_points", "N/A"))
-    # Split by common delimiters and format as list
+    # Handle list format: ['item1', 'item2'] or period-separated
     if isinstance(pain_points_text, str):
-        items = [item.strip() for item in pain_points_text.replace('\n', ',').split('.') if item.strip()]
+        # Remove brackets and quotes if present
+        pain_points_text = pain_points_text.strip("[]").replace("'", "").replace('"', "")
+        items = [item.strip() for item in pain_points_text.split(',') if item.strip()]
         for item in items:
             pdf.multi_cell(safe_width, 6, f"• {item}")
+            pdf.ln(1)
+    elif isinstance(pain_points_text, list):
+        for item in pain_points_text:
+            pdf.multi_cell(safe_width, 6, f"• {safe_text(item)}")
             pdf.ln(1)
     else:
         pdf.multi_cell(safe_width, 6, pain_points_text)
