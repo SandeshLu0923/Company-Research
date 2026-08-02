@@ -61,61 +61,78 @@ def build_pdf_binary(report: dict) -> bytes:
     """Compiles unified research profiles cleanly into a standardized corporate PDF."""
     pdf = FPDF(format="A4")
     pdf.add_page()
-    pdf.set_margins(12, 12)
-    pdf.set_auto_page_break(auto=True, margin=10)
+    pdf.set_margins(15, 15, 15)
+    pdf.set_auto_page_break(auto=True, margin=15)
 
-    safe_width = 186
+    safe_width = 180
     safe_text = lambda value: str(value or "N/A")
 
-    pdf.set_fill_color(12, 12, 12)
-    pdf.rect(0, 0, 210, 36, "F")
-    pdf.set_text_color(246, 176, 67)
-    pdf.set_font("Helvetica", "B", 11)
-    pdf.cell(0, 10, "RELU CONSULTANCY · COMPANY RESEARCH REPORT", 0, 1, "C")
-    pdf.set_text_color(255, 255, 255)
-    pdf.set_font("Helvetica", "B", 20)
-    pdf.cell(0, 10, safe_text(report.get("name", "Unknown Company")), 0, 1, "C")
-    pdf.ln(4)
-
-    pdf.set_draw_color(246, 176, 67)
-    pdf.line(10, pdf.get_y(), 200, pdf.get_y())
-    pdf.ln(4)
-
+    # Header section
+    pdf.set_fill_color(15, 15, 20)
+    pdf.rect(0, 0, 210, 40, "F")
+    pdf.set_text_color(102, 126, 234)
     pdf.set_font("Helvetica", "B", 10)
-    pdf.set_text_color(246, 176, 67)
-    pdf.cell(0, 6, "COMPANY INFORMATION", 0, 1, "L")
+    pdf.cell(0, 8, "RELU CONSULTANCY - COMPANY RESEARCH REPORT", 0, 1, "C")
+    pdf.set_text_color(255, 255, 255)
+    pdf.set_font("Helvetica", "B", 24)
+    pdf.cell(0, 12, safe_text(report.get("name", "Unknown Company")), 0, 1, "C")
+    pdf.ln(5)
+
+    # Divider line
+    pdf.set_draw_color(102, 126, 234)
+    pdf.line(15, pdf.get_y(), 195, pdf.get_y())
+    pdf.ln(8)
+
+    # Company Information section
+    pdf.set_font("Helvetica", "B", 12)
+    pdf.set_text_color(102, 126, 234)
+    pdf.cell(0, 8, "COMPANY INFORMATION", 0, 1, "L")
+    pdf.ln(2)
     pdf.set_font("Helvetica", "", 10)
-    pdf.set_text_color(20, 20, 20)
+    pdf.set_text_color(50, 50, 50)
     pdf.cell(0, 6, f"Website: {safe_text(report.get('url', 'N/A'))}", 0, 1, "L")
     pdf.cell(0, 6, f"Phone: {safe_text(report.get('phone', 'N/A'))}", 0, 1, "L")
     pdf.cell(0, 6, f"Address: {safe_text(report.get('address', 'N/A'))}", 0, 1, "L")
+    pdf.ln(6)
+
+    # Products & Services section
+    pdf.set_font("Helvetica", "B", 12)
+    pdf.set_text_color(102, 126, 234)
+    pdf.cell(0, 8, "PRODUCTS & SERVICES", 0, 1, "L")
+    pdf.ln(2)
+    pdf.set_draw_color(102, 126, 234)
+    pdf.line(15, pdf.get_y(), 195, pdf.get_y())
     pdf.ln(4)
+    pdf.set_font("Helvetica", "", 10)
+    pdf.set_text_color(50, 50, 50)
+    pdf.multi_cell(safe_width, 6, safe_text(report.get("products_services", "N/A")))
+    pdf.ln(6)
 
-    sections = [
-        ("PRODUCTS & SERVICES", report.get("products_services", "N/A")),
-        ("AI-GENERATED PAIN POINTS", report.get("pain_points", "N/A")),
-    ]
+    # AI-Generated Pain Points section
+    pdf.set_font("Helvetica", "B", 12)
+    pdf.set_text_color(102, 126, 234)
+    pdf.cell(0, 8, "AI-GENERATED PAIN POINTS", 0, 1, "L")
+    pdf.ln(2)
+    pdf.set_draw_color(102, 126, 234)
+    pdf.line(15, pdf.get_y(), 195, pdf.get_y())
+    pdf.ln(4)
+    pdf.set_font("Helvetica", "", 10)
+    pdf.set_text_color(50, 50, 50)
+    pdf.multi_cell(safe_width, 6, safe_text(report.get("pain_points", "N/A")))
+    pdf.ln(6)
 
-    for title, content in sections:
-        pdf.set_font("Helvetica", "B", 10)
-        pdf.set_text_color(246, 176, 67)
-        pdf.cell(0, 6, title, 0, 1, "L")
-        pdf.line(10, pdf.get_y(), 200, pdf.get_y())
-        pdf.ln(2)
-        pdf.set_font("Helvetica", "", 10)
-        pdf.set_text_color(20, 20, 20)
-        pdf.multi_cell(safe_width, 5, safe_text(content))
-        pdf.ln(4)
-
+    # Competitors section
     competitors = report.get("competitors", [])
     if competitors:
-        pdf.set_font("Helvetica", "B", 10)
-        pdf.set_text_color(246, 176, 67)
-        pdf.cell(0, 6, "COMPETITORS", 0, 1, "L")
-        pdf.line(10, pdf.get_y(), 200, pdf.get_y())
+        pdf.set_font("Helvetica", "B", 12)
+        pdf.set_text_color(102, 126, 234)
+        pdf.cell(0, 8, "COMPETITORS", 0, 1, "L")
         pdf.ln(2)
+        pdf.set_draw_color(102, 126, 234)
+        pdf.line(15, pdf.get_y(), 195, pdf.get_y())
+        pdf.ln(4)
         pdf.set_font("Helvetica", "", 10)
-        pdf.set_text_color(20, 20, 20)
+        pdf.set_text_color(50, 50, 50)
         for competitor in competitors:
             if isinstance(competitor, dict):
                 name = safe_text(competitor.get("name", "Unknown"))
@@ -123,8 +140,9 @@ def build_pdf_binary(report: dict) -> bytes:
             else:
                 name = safe_text(competitor)
                 website = "N/A"
-            pdf.multi_cell(safe_width, 5, f"- {name}: {website}")
-        pdf.ln(3)
+            pdf.multi_cell(safe_width, 6, f"• {name} - {website}")
+            pdf.ln(2)
+        pdf.ln(4)
 
     return bytes(pdf.output(dest="S"))
 
@@ -154,5 +172,9 @@ def post_to_discord_channel(token: str, ch_id: str, app_name: str, app_email: st
         )
         response.raise_for_status()
         return True
-    except Exception:
+    except httpx.HTTPStatusError as e:
+        print(f"Discord API Error: {e.response.status_code} - {e.response.text}")
+        return False
+    except Exception as e:
+        print(f"Discord Error: {str(e)}")
         return False
