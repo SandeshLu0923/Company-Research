@@ -86,8 +86,24 @@ if "last_report" not in st.session_state:
 
 # SIDEBAR CREDENTIALS HOOKS
 with st.sidebar:
-    # (Keep your existing brand design div block code unchanged here)
-    
+    st.markdown(
+        """
+        <div class="sidebar-brand">
+            <div class="sidebar-brand-icon">⌁</div>
+            <div>
+                <div class="sidebar-brand-title">Relu Consultancy</div>
+                <div class="sidebar-brand-subtitle">Company Intelligence</div>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    if st.button("+ New Research", use_container_width=True):
+        st.session_state.history = [{"role": "assistant", "content": "Welcome candidate. Submit a company name or website URL below to construct active intelligence."}]
+        st.session_state.last_report = None
+        st.session_state.research_input = ""
+
     tab_a, tab_b = st.tabs(["API", "DISCORD"])
     with tab_a:
         # 🎯 MIRROR VALUE HOOKS: Changes translate to persistent storage immediately
@@ -114,6 +130,10 @@ with st.sidebar:
         if ui_name: st.session_state.applicant_name = ui_name.strip()
         if ui_email: st.session_state.applicant_email = ui_email.strip()
 
+    st.markdown("---")
+    st.caption("How it works")
+    st.markdown("1. Enter a company name or website URL\n2. Resolve the official site using Serper\n3. Crawl the domain and enrich with live search context\n4. Generate a polished PDF report")
+
 #MAIN PRESENTATION & PROCESSING PIPELINE HOOKS
 
 st.markdown('<div class="hero-title">Know any company<br/>in minutes.</div>', unsafe_allow_html=True)
@@ -123,8 +143,8 @@ st.markdown(
 )
 
 # Clean Persistent Variable Mappings
-OR_KEY = st.session_state.get("openrouter_api_key", "").strip()
-SP_KEY = st.session_state.get("serper_api_key", "").strip()
+OR_KEY = st.session_state.get("stored_openrouter_key", "").strip()
+SP_KEY = st.session_state.get("stored_serper_key", "").strip()
 
 # Only if the user completely leaves the UI text boxes blank, we look at the server environment as a backup
 if not OR_KEY:
