@@ -1,7 +1,7 @@
 import json
 import httpx
 from fpdf import FPDF
-
+import streamlit as st
 
 def verify_serper_authentication(api_key: str) -> bool:
     """Executes a minimalist ping test to confirm the Serper key is active."""
@@ -9,7 +9,7 @@ def verify_serper_authentication(api_key: str) -> bool:
         return False
     try:
         response = httpx.post(
-            "https://google.serper.dev/search",
+            "https://serper.dev",
             headers={"X-API-KEY": api_key, "Content-Type": "application/json"},
             json={"q": "ping", "num": 1},
             timeout=8,
@@ -18,44 +18,61 @@ def verify_serper_authentication(api_key: str) -> bool:
     except Exception:
         return False
 
-
 def verify_openrouter_authentication(api_key: str) -> bool:
     """Queries the OpenRouter auth endpoint to verify token legitimacy."""
     if not api_key:
         return False
     headers = {"Authorization": f"Bearer {api_key}"}
     try:
-        response = httpx.get("https://openrouter.ai/api/v1/models", headers=headers, timeout=8)
+        response = httpx.get("https://openrouter.ai", headers=headers, timeout=8)
         return response.status_code == 200
     except Exception:
         return False
 
-
 def execute_openrouter_call(prompt: str, api_key: str, model: str) -> str:
-    """Interfaces cleanly with OpenRouter universal endpoint layer."""
+    """Interfaces cleanly with OpenRouter universal endpoint layer across all providers."""
     if not api_key:
         return "Error: Missing AI validation token."
-    url = "https://openrouter.ai/api/v1/chat/completions"
-    headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+    
+    # 🎯 TARGET PLURAL NATIVE COMPLETIONS ENDPOINT
+    url = "https://openrouter.ai"
+    
+    headers = {
+        "Authorization": f"Bearer {api_key.strip()}", 
+        "Content-Type": "application/json"
+    }
+    
+    combined_content = (
+        "SYSTEM INSTRUCTION: You are a professional corporate intelligence extraction agent. "
+        "Return only valid raw JSON matching the schema exactly and do not wrap the output in markdown code fences.\n\n"
+        f"USER REQUEST INPUTS:\n{prompt}"
+    )
+    
     payload = {
-        "model": model,
+        "model": model.strip(),
         "messages": [
             {
-                "role": "system",
-                "content": "You are a professional corporate intelligence extraction agent. Return only valid raw JSON matching the schema exactly and do not wrap the output in markdown code fences.",
-            },
-            {"role": "user", "content": prompt},
+                "role": "user", 
+                "content": combined_content
+            }
         ],
         "temperature": 0.2,
     }
+    
     try:
         response = httpx.post(url, headers=headers, json=payload, timeout=45)
-        response.raise_for_status()
-        content = response.json().get("choices", [{}])[0].get("message", {}).get("content", "")
-        return content
+        
+        # Capture raw validation error logs if returned by upstream servers
+        if response.status_code != 200:
+            return f"AI Error: Remote server returned status code {response.status_code} - {response.text}"
+            
+        choices = response.json().get("choices", [])
+        if choices and len(choices) > 0:
+            # 🎯 EXTRACT RAW TEXT MATRIX FROM THE OPENROUTER DICTIONARY PACKAGES CLEANLY
+            return choices[0].get("message", {}).get("content", "")
+        return "AI Error: Received empty response layout from OpenRouter."
     except Exception as exc:
         return f"AI Error: {str(exc)}"
-
 
 def build_pdf_binary(report: dict) -> bytes:
     """Compiles unified research profiles cleanly into a standardized corporate PDF."""
@@ -106,10 +123,8 @@ def build_pdf_binary(report: dict) -> bytes:
     pdf.set_font("Helvetica", "", 10)
     pdf.set_text_color(50, 50, 50)
     
-    products_text = safe_text(report.get("products_services", "N/A"))
-    # Handle list format: ['item1', 'item2'] or comma-separated
+    products_text = report.get("products_services", "N/A")
     if isinstance(products_text, str):
-        # Remove brackets and quotes if present
         products_text = products_text.strip("[]").replace("'", "").replace('"', "")
         items = [item.strip() for item in products_text.split(',') if item.strip()]
         for item in items:
@@ -120,7 +135,7 @@ def build_pdf_binary(report: dict) -> bytes:
             pdf.multi_cell(safe_width, 6, f"- {safe_text(item)}")
             pdf.ln(1)
     else:
-        pdf.multi_cell(safe_width, 6, products_text)
+        pdf.multi_cell(safe_width, 6, safe_text(products_text))
     pdf.ln(4)
 
     # AI-Generated Pain Points section
@@ -134,10 +149,8 @@ def build_pdf_binary(report: dict) -> bytes:
     pdf.set_font("Helvetica", "", 10)
     pdf.set_text_color(50, 50, 50)
     
-    pain_points_text = safe_text(report.get("pain_points", "N/A"))
-    # Handle list format: ['item1', 'item2'] or period-separated
+    pain_points_text = report.get("pain_points", "N/A")
     if isinstance(pain_points_text, str):
-        # Remove brackets and quotes if present
         pain_points_text = pain_points_text.strip("[]").replace("'", "").replace('"', "")
         items = [item.strip() for item in pain_points_text.split(',') if item.strip()]
         for item in items:
@@ -148,7 +161,7 @@ def build_pdf_binary(report: dict) -> bytes:
             pdf.multi_cell(safe_width, 6, f"- {safe_text(item)}")
             pdf.ln(1)
     else:
-        pdf.multi_cell(safe_width, 6, pain_points_text)
+        pdf.multi_cell(safe_width, 6, safe_text(pain_points_text))
     pdf.ln(4)
 
     # Competitors section
@@ -176,13 +189,12 @@ def build_pdf_binary(report: dict) -> bytes:
 
     return bytes(pdf.output(dest="S"))
 
-
 def post_to_discord_channel(token: str, ch_id: str, app_name: str, app_email: str, r_data: dict, pdf_bytes: bytes) -> bool:
     """Dispatches report binaries and research data arrays straight to Discord via API."""
     if not token or not ch_id:
         return False
 
-    url = f"https://discord.com/api/v10/channels/{ch_id}/messages"
+    url = f"https://discord.com{ch_id}/messages"
     message = (
         f"🧬 **Relu Hackathon Sync Complete**\n"
         f"👤 **Candidate:** {app_name} ({app_email})\n"
@@ -191,7 +203,6 @@ def post_to_discord_channel(token: str, ch_id: str, app_name: str, app_email: st
     )
 
     try:
-        # CONVERT BOTH TO AN EXPLICIT MULTIPART DATA BLOB DICTIONARY BLOCK
         files = {
             "payload_json": (None, json.dumps({"content": message}), "application/json"),
             "file": ("Intelligence_Report.pdf", pdf_bytes, "application/pdf")
@@ -200,15 +211,9 @@ def post_to_discord_channel(token: str, ch_id: str, app_name: str, app_email: st
         response = httpx.post(
             url,
             headers={"Authorization": f"Bot {token.strip()}"},
-            files=files, # Pass everything seamlessly inside the multi-part file matrix
+            files=files,
             timeout=20,
         )
-        response.raise_for_status()
-        return True
-    except httpx.HTTPStatusError as e:
-        print(f"Discord API Error: {e.response.status_code} - {e.response.text}")
+        return response.status_code in [200, 201]
+    except Exception:
         return False
-    except Exception as e:
-        print(f"Discord Error: {str(e)}")
-        return False
-

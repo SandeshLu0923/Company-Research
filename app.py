@@ -204,21 +204,30 @@ if submitted and user_input:
             ai_response = ai_pdf.execute_openrouter_call(prompt, OR_KEY, ACTIVE_MODEL)
             
             try:
-                # 🎯 CLEAN CONVERSION: Safely strips trailing/leading markdown fences from any provider
-                clean_json_str = ai_response.strip()
-                if clean_json_str.startswith("```"):
-                    clean_json_str = clean_json_str.split("```")[1]
-                    if clean_json_str.startswith("json"):
-                        clean_json_str = clean_json_str[4:]
-                clean_json_str = clean_json_str.strip()
+                # 🎯 BULLETPROOF CLEANING: Extract only the valid JSON payload using Regex
+                import re
+                
+                # Search for everything from the first open curly brace to the last closing curly brace
+                match = re.search(r"(\{.*\}).*", ai_response.strip(), re.DOTALL)
+                if match:
+                    clean_json_str = match.group(1).strip()
+                else:
+                    clean_json_str = ai_response.strip()
                 
                 parsed = json.loads(clean_json_str)
-            except Exception:
+            except Exception as e:
+                # If it still errors out, save the raw response in the summary so you can see it
                 parsed = {
-                    "company_name": company_name, "website": url, "phone_number": "Not Listed", "address": "Not Listed",
-                    "products_services": "Unable to extract from response.", "summary": ai_response,
-                    "pain_points": "Unable to extract from response.", "competitors": [],
+                    "company_name": company_name,
+                    "website": url,
+                    "phone_number": "Not Listed",
+                    "address": "Not Listed",
+                    "products_services": f"Extraction Error. Raw AI Response: {ai_response[:200]}",
+                    "summary": ai_response,
+                    "pain_points": "Unable to parse text.",
+                    "competitors": [],
                 }
+
 
         competitors = parsed.get("competitors", []) or []
         final_pkg = {
