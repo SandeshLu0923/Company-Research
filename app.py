@@ -63,13 +63,14 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# 1. Core State Init Bounds
-if "openrouter_api_key" not in st.session_state:
-    st.session_state.openrouter_api_key = os.getenv("OPENROUTER_API_KEY", "")
-if "serper_api_key" not in st.session_state:
-    st.session_state.serper_api_key = os.getenv("SERPER_API_KEY", "")
+
+# We use independent state containers to guarantee the keys NEVER get wiped on page runs
+if "stored_openrouter_key" not in st.session_state:
+    st.session_state.stored_openrouter_key = os.getenv("OPENROUTER_API_KEY", "")
+if "stored_serper_key" not in st.session_state:
+    st.session_state.stored_serper_key = os.getenv("SERPER_API_KEY", "")
 if "selected_model" not in st.session_state:
-    st.session_state.selected_model = "openai/gpt-4o-mini"
+    st.session_state.selected_model = "openrouter/free"
 if "discord_bot_token" not in st.session_state:
     st.session_state.discord_bot_token = ""
 if "discord_channel_id" not in st.session_state:
@@ -83,57 +84,35 @@ if "history" not in st.session_state:
 if "last_report" not in st.session_state:
     st.session_state.last_report = None
 
-
-# SIDEBAR RE-ENGINEERING (Forms Removed to Permit Instant State Sync)
-
+# SIDEBAR CREDENTIALS HOOKS
 with st.sidebar:
-    st.markdown(
-        """
-        <div class="sidebar-brand">
-            <div class="sidebar-brand-icon">⌁</div>
-            <div>
-                <div class="sidebar-brand-title">Relu Consultancy</div>
-                <div class="sidebar-brand-subtitle">Company Intelligence</div>
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-    if st.button("+ New Research", use_container_width=True):
-        st.session_state.history = [{"role": "assistant", "content": "Welcome candidate. Submit a company name or website URL below to construct active intelligence."}]
-        st.session_state.last_report = None
-        st.session_state.research_input = ""
-
+    # (Keep your existing brand design div block code unchanged here)
+    
     tab_a, tab_b = st.tabs(["API", "DISCORD"])
     with tab_a:
-        st.text_input("OpenRouter API Key", type="password", key="openrouter_api_key")
-        st.text_input("Serper.dev API Key", type="password", key="serper_api_key")
-        # Replace your old selectbox array code with this exact live free-tier mapping:
-        model = st.selectbox(
-            "AI Model", 
-            [
-                "openai/gpt-4o-mini", 
-                "openrouter/free",
-                "anthropic/claude-sonnet-5",
-                "google/gemini-2.5-flash"
-            ], 
-            key="selected_model"
-        )
-
+        # 🎯 MIRROR VALUE HOOKS: Changes translate to persistent storage immediately
+        ui_or_key = st.text_input("OpenRouter API Key", type="password", value=st.session_state.stored_openrouter_key)
+        ui_sp_key = st.text_input("Serper.dev API Key", type="password", value=st.session_state.stored_serper_key)
+        
+        if ui_or_key: st.session_state.stored_openrouter_key = ui_or_key.strip()
+        if ui_sp_key: st.session_state.stored_serper_key = ui_sp_key.strip()
+        
+        st.selectbox("AI Model", ["openrouter/free", "openai/gpt-4o-mini", "google/gemini-1.5-pro", "anthropic/claude-3.5-sonnet"], key="selected_model")
         
     with tab_b:
         st.info("Discord bot integration is enabled once both fields are configured.")
-        st.text_input("Bot Token", type="password", key="discord_bot_token")
-        st.text_input("Channel ID", key="discord_channel_id")
+        ui_d_token = st.text_input("Bot Token", type="password", value=st.session_state.discord_bot_token)
+        ui_ch_id = st.text_input("Channel ID", value=st.session_state.discord_channel_id)
+        
+        if ui_d_token: st.session_state.discord_bot_token = ui_d_token.strip()
+        if ui_ch_id: st.session_state.discord_channel_id = ui_ch_id.strip()
+        
         st.subheader("Applicant Details")
-        st.text_input("Full Name", key="applicant_name")
-        st.text_input("Email Address", key="applicant_email")
-
-    st.markdown("---")
-    st.caption("How it works")
-    st.markdown("1. Enter a company name or website URL\n2. Resolve the official site using Serper\n3. Crawl the domain and enrich with live search context\n4. Generate a polished PDF report")
-
+        ui_name = st.text_input("Full Name", value=st.session_state.applicant_name)
+        ui_email = st.text_input("Email Address", value=st.session_state.applicant_email)
+        
+        if ui_name: st.session_state.applicant_name = ui_name.strip()
+        if ui_email: st.session_state.applicant_email = ui_email.strip()
 
 #MAIN PRESENTATION & PROCESSING PIPELINE HOOKS
 
@@ -144,8 +123,14 @@ st.markdown(
 )
 
 # Clean Persistent Variable Mappings
-OR_KEY = st.session_state.get("openrouter_api_key", "").strip()
-SP_KEY = st.session_state.get("serper_api_key", "").strip()
+OR_KEY = st.session_state.stored_openrouter_key
+SP_KEY = st.session_state.stored_serper_key
+ACTIVE_MODEL = st.session_state.selected_model
+
+D_TOKEN = st.session_state.discord_bot_token
+CH_ID = st.session_state.discord_channel_id
+APP_NAME = st.session_state.applicant_name
+APP_EMAIL = st.session_state.applicant_email
 
 # If the inputs are completely empty on the UI fields, fall back to check if they are defined inside Streamlit Advanced Secrets
 if not OR_KEY:
